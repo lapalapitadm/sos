@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Panel de Emergencias</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg:       #0a0c10;
+      --surface:  #111520;
+      --border:   #1e2535;
+      --accent:   #00e5ff;
+      --text:     #e8eaf0;
+      --muted:    #5a6070;
+      --danger:   #ff1744;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow-x: hidden;
+    }
+
+    /* ── Scan-line overlay ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,229,255,.015) 2px,
+        rgba(0,229,255,.015) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ──────────────────── LOGIN ──────────────────── */
+    #login {
+      width: min(400px, 90vw);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 48px 36px;
+      text-align: center;
+      animation: fadeUp .5s ease both;
+    }
+
+    #login .shield {
+      font-size: 52px;
+      margin-bottom: 16px;
+      filter: drop-shadow(0 0 16px rgba(0,229,255,.5));
+      animation: pulse 2.5s ease-in-out infinite;
+    }
+
+    #login h2 {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 22px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 32px;
+    }
+
+    #login input[type="password"] {
+      width: 100%;
+      padding: 14px 18px;
+      font-size: 16px;
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+      margin-bottom: 16px;
+    }
+
+    #login input[type="password"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0,229,255,.12);
+    }
+
+    .btn-login {
+      width: 100%;
+      padding: 14px;
+      font-size: 15px;
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: opacity .2s, transform .1s;
+    }
+
+    .btn-login:hover   { opacity: .88; }
+    .btn-login:active  { transform: scale(.97); }
+
+    .error-msg {
+      color: var(--danger);
+      font-size: 13px;
+      margin-top: 12px;
+      min-height: 20px;
+      letter-spacing: .5px;
+    }
+
+    /* ──────────────────── PANEL ──────────────────── */
+    #panel {
+      width: min(520px, 94vw);
+      animation: fadeUp .4s ease both;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 8px 28px;
+    }
+
+    .panel-header h1 {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 22px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    .panel-header .indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 1px;
+    }
+
+    .indicator-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #00e676;
+      animation: blink 1.4s ease-in-out infinite;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .alert-btn {
+      position: relative;
+      padding: 36px 20px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700;
+      font-size: 20px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      transition: transform .15s, box-shadow .2s;
+      overflow: hidden;
+    }
+
+    .alert-btn::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: rgba(255,255,255,0);
+      transition: background .2s;
+    }
+
+    .alert-btn:hover  { transform: translateY(-2px); }
+    .alert-btn:hover::after { background: rgba(255,255,255,.06); }
+    .alert-btn:active { transform: scale(.97); }
+
+    .alert-btn .icon { font-size: 34px; }
+    .alert-btn .label { font-size: 17px; letter-spacing: 2px; }
+
+    .btn-robo        { background: linear-gradient(135deg, #b71c1c, #e53935); box-shadow: 0 4px 20px rgba(229,57,53,.35); }
+    .btn-incendio    { background: linear-gradient(135deg, #e65100, #fb8c00); box-shadow: 0 4px 20px rgba(251,140,0,.35); }
+    .btn-intrusion   { background: linear-gradient(135deg, #0d47a1, #1976d2); box-shadow: 0 4px 20px rgba(25,118,210,.35); }
+    .btn-ataque      { background: linear-gradient(135deg, #4a148c, #8e24aa); box-shadow: 0 4px 20px rgba(142,36,170,.35); }
+
+    .btn-logout {
+      width: 100%;
+      padding: 12px;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      letter-spacing: .5px;
+      transition: color .2s, border-color .2s;
+    }
+
+    .btn-logout:hover { color: var(--text); border-color: var(--muted); }
+
+    /* ──────────────────── MODAL ──────────────────── */
+    #modal {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.88);
+      backdrop-filter: blur(6px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      animation: fadeIn .2s ease both;
+    }
+
+    .modal-card {
+      width: min(420px, 90vw);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 36px 28px 28px;
+      position: relative;
+      animation: slideUp .25s ease both;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 14px; right: 14px;
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: var(--border);
+      border: none;
+      color: var(--muted);
+      font-size: 16px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .2s, color .2s;
+    }
+
+    .modal-close:hover { background: var(--danger); color: #fff; }
+
+    .modal-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+
+    .modal-title {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 19px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+
+    .suc-btn {
+      width: 100%;
+      padding: 16px 20px;
+      margin-bottom: 10px;
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      text-align: left;
+      display: flex; align-items: center; gap: 12px;
+      transition: border-color .2s, background .2s;
+    }
+
+    .suc-btn:hover  { background: #141825; border-color: var(--accent); }
+    .suc-btn:active { transform: scale(.98); }
+    .suc-btn .suc-icon { font-size: 20px; }
+
+    /* ──────────────────── CONFIRM MODAL ──────────────────── */
+    #confirm-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.7);
+      backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 200;
+      animation: fadeIn .15s ease both;
+    }
+
+    .confirm-card {
+      width: min(360px, 88vw);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 32px 24px 24px;
+      text-align: center;
+      animation: slideUp .2s ease both;
+    }
+
+    .confirm-card .warn-icon { font-size: 44px; margin-bottom: 12px; }
+
+    .confirm-card h3 {
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 18px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--danger);
+      margin-bottom: 8px;
+    }
+
+    .confirm-card p {
+      font-size: 14px;
+      color: var(--muted);
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+
+    .confirm-card p strong { color: var(--text); }
+
+    .confirm-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .btn-cancel {
+      padding: 12px;
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      cursor: pointer;
+      transition: color .2s, border-color .2s;
+    }
+
+    .btn-cancel:hover { color: var(--text); border-color: var(--muted); }
+
+    .btn-confirm {
+      padding: 12px;
+      background: var(--danger);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: opacity .2s;
+    }
+
+    .btn-confirm:hover { opacity: .85; }
+
+    /* ──────────────────── TOAST ──────────────────── */
+    #toast {
+      position: fixed;
+      bottom: 28px; left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #0d2b1a;
+      color: #00e676;
+      border: 1px solid #00e676;
+      padding: 12px 24px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: .5px;
+      z-index: 999;
+      transition: transform .35s cubic-bezier(.34,1.56,.64,1);
+      white-space: nowrap;
+    }
+
+    #toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ──────────────────── KEYFRAMES ──────────────────── */
+    @keyframes fadeUp  { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes fadeIn  { from { opacity:0; } to { opacity:1; } }
+    @keyframes slideUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes pulse   { 0%,100% { transform:scale(1); } 50% { transform:scale(1.06); } }
+    @keyframes blink   { 0%,100% { opacity:1; } 50% { opacity:.3; } }
+
+    /* ──────────────────── RESPONSIVE ──────────────────── */
+    @media (max-width: 400px) {
+      .grid { grid-template-columns: 1fr; }
+      .alert-btn { padding: 28px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ───── LOGIN ───── -->
+<div id="login">
+  <div class="shield">🛡️</div>
+  <h2>Acceso al Sistema</h2>
+  <input type="password" id="password" placeholder="Contraseña de acceso" autocomplete="current-password">
+  <button class="btn-login" onclick="login()">Ingresar</button>
+  <div class="error-msg" id="error-msg"></div>
+</div>
+
+<!-- ───── PANEL ───── -->
+<div id="panel" style="display:none;">
+  <div class="panel-header">
+    <h1>🚨 Emergencias</h1>
+    <div class="indicator">
+      <div class="indicator-dot"></div>
+      SISTEMA ACTIVO
+    </div>
+  </div>
+
+  <div class="grid">
+    <button class="alert-btn btn-robo" onclick="mostrarSucursales('ROBO','🔴','#e53935')">
+      <span class="icon">🔴</span>
+      <span class="label">Robo</span>
+    </button>
+    <button class="alert-btn btn-incendio" onclick="mostrarSucursales('INCENDIO','🔥','#fb8c00')">
+      <span class="icon">🔥</span>
+      <span class="label">Incendio</span>
+    </button>
+    <button class="alert-btn btn-intrusion" onclick="mostrarSucursales('INTRUSIÓN','🚨','#1976d2')">
+      <span class="icon">🚨</span>
+      <span class="label">Intrusión</span>
+    </button>
+    <button class="alert-btn btn-ataque" onclick="mostrarSucursales('ATAQUE ARMADO','🔫','#8e24aa')">
+      <span class="icon">🔫</span>
+      <span class="label">Ataque Armado</span>
+    </button>
+  </div>
+
+  <button class="btn-logout" onclick="logout()">↩ Cerrar sesión</button>
+</div>
+
+<!-- ───── MODAL SUCURSALES ───── -->
+<div id="modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal-card">
+    <button class="modal-close" onclick="cerrarModal()" aria-label="Cerrar">✕</button>
+    <div class="modal-badge" id="modal-badge"></div>
+    <div class="modal-title" id="modal-title">Selecciona la sucursal</div>
+
+    <button class="suc-btn" onclick="pedirConfirmacion('SUC-01 (Arco Norte)')">
+      <span class="suc-icon">🏢</span> SUC-01 — Arco Norte
+    </button>
+    <button class="suc-btn" onclick="pedirConfirmacion('SUC-02 (Kabah)')">
+      <span class="suc-icon">🏢</span> SUC-02 — Kabah
+    </button>
+    <button class="suc-btn" onclick="pedirConfirmacion('SUC-03 (Zona Hotelera)')">
+      <span class="suc-icon">🏢</span> SUC-03 — Zona Hotelera
+    </button>
+    <button class="suc-btn" onclick="pedirConfirmacion('SUC-04 (Rancho Viejo)')">
+      <span class="suc-icon">🏢</span> SUC-04 — Rancho Viejo
+    </button>
+    <button class="suc-btn" onclick="pedirConfirmacion('SUC-05 (Luna)')">
+      <span class="suc-icon">🏢</span> SUC-05 — Luna
+    </button>
+    <button class="suc-btn" onclick="pedirConfirmacion('SUC-06 (Tulum)')">
+      <span class="suc-icon">🏢</span> SUC-06 — Tulum
+    </button>
+    <button class="suc-btn" onclick="pedirConfirmacion('SUC-07 (Malecon)')">
+      <span class="suc-icon">🏢</span> SUC-07 — Malecon
+    </button>
+  </div>
+</div>
+
+<!-- ───── MODAL CONFIRMACIÓN ───── -->
+<div id="confirm-overlay" style="display:none;" role="dialog" aria-modal="true">
+  <div class="confirm-card">
+    <div class="warn-icon">⚠️</div>
+    <h3>Confirmar Alerta</h3>
+    <p id="confirm-text"></p>
+    <div class="confirm-actions">
+      <button class="btn-cancel" onclick="cancelarConfirmacion()">Cancelar</button>
+      <button class="btn-confirm" onclick="confirmarEnvio()">Enviar Alerta</button>
+    </div>
+  </div>
+</div>
+
+<!-- ───── TOAST ───── -->
+<div id="toast">✅ Alerta enviada correctamente</div>
+
+<script>
+  // ── SEGURIDAD: hash SHA-256 de la contraseña (nunca texto plano) ──
+  // Para generar tu propio hash, abre la consola y ejecuta:
+  //   hashStr("TuNuevaContraseña").then(h => console.log(h))
+  // Luego reemplaza el valor de HASH_CLAVE abajo.
+  const HASH_CLAVE = "0a53d7cc06cd11f6120f112af9e45fa47eb9e9bf752122107b468042e99e4105";
+
+  async function hashStr(str) {
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,"0")).join("");
+  }
+
+  // ── SESIÓN ──
+  window.onload = function () {
+    const loggedIn = sessionStorage.getItem("login") === "ok";
+    document.getElementById("login").style.display  = loggedIn ? "none"  : "block";
+    document.getElementById("panel").style.display  = loggedIn ? "block" : "none";
+  };
+
+  async function login() {
+    const input = document.getElementById("password").value;
+    const hash  = await hashStr(input);
+
+    if (hash === HASH_CLAVE) {
+      sessionStorage.setItem("login", "ok");
+      document.getElementById("login").style.display = "none";
+      document.getElementById("panel").style.display = "block";
+      document.getElementById("error-msg").textContent = "";
+    } else {
+      document.getElementById("error-msg").textContent = "❌ Contraseña incorrecta";
+      document.getElementById("password").value = "";
+    }
+  }
+
+  function logout() {
+    sessionStorage.removeItem("login");
+    location.reload();
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("password").addEventListener("keyup", e => {
+      if (e.key === "Enter") login();
+    });
+  });
+
+  // ── MODAL SUCURSALES ──
+  let tipoAlerta = "", iconoAlerta = "", colorAlerta = "", sucursalPendiente = "";
+
+  function mostrarSucursales(tipo, icono, color) {
+    if (sessionStorage.getItem("login") !== "ok") return;
+    tipoAlerta  = tipo;
+    iconoAlerta = icono;
+    colorAlerta = color;
+
+    const badge = document.getElementById("modal-badge");
+    badge.textContent = `${icono} ${tipo}`;
+    badge.style.background = color + "22";
+    badge.style.color       = color;
+    badge.style.border      = `1px solid ${color}55`;
+
+    document.getElementById("modal").style.display = "flex";
+  }
+
+  function cerrarModal() {
+    document.getElementById("modal").style.display = "none";
+  }
+
+  // Cerrar modal al hacer clic en el fondo
+  document.getElementById("modal").addEventListener("click", function(e) {
+    if (e.target === this) cerrarModal();
+  });
+
+  // ── CONFIRMACIÓN ──
+  function pedirConfirmacion(sucursal) {
+    sucursalPendiente = sucursal;
+    document.getElementById("confirm-text").innerHTML =
+      `¿Confirmar alerta de <strong>${tipoAlerta}</strong> en <strong>${sucursal}</strong>?<br>Esta acción notificará al equipo de seguridad.`;
+    document.getElementById("confirm-overlay").style.display = "flex";
+  }
+
+  function cancelarConfirmacion() {
+    document.getElementById("confirm-overlay").style.display = "none";
+    sucursalPendiente = "";
+  }
+
+  async function confirmarEnvio() {
+    if (sessionStorage.getItem("login") !== "ok") return;
+
+    document.getElementById("confirm-overlay").style.display = "none";
+    cerrarModal();
+
+    const mensaje =
+      `⚠️ <b>ALERTA DE EMERGENCIA</b> ⚠️\n\n` +
+      `🚨 <b>Tipo:</b> ${tipoAlerta}\n` +
+      `📍 <b>Sucursal:</b> ${sucursalPendiente}\n` +
+      `🕒 <b>Hora:</b> ${new Date().toLocaleTimeString('es-MX')}\n\n` +
+      `🔴 <b>Estado: ACTIVA</b>`;
+
+    const token   = "8580667020:AAECAADDT_mMjLJom6USNbiB3cTplXhWkSQ";
+    const chat_id = "-5217790991";
+
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id,
+          text: mensaje,
+          parse_mode: "HTML",
+          disable_notification: false,
+          protect_content: true
+        })
+      });
+      if (!res.ok) throw new Error("Error al enviar");
+    } catch (err) {
+      console.error("Telegram error:", err);
+    }
+
+    mostrarToast("✅ Alerta enviada correctamente");
+    sucursalPendiente = "";
+  }
+
+  // ── TOAST ──
+  function mostrarToast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 3000);
+  }
+
+  // ── ESC para cerrar modales ──
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") {
+      cancelarConfirmacion();
+      cerrarModal();
+    }
+  });
+</script>
+</body>
+</html>
